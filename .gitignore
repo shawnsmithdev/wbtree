@@ -1,6 +1,9 @@
 # goland
 .idea/
 
+# my push script
+push.sh
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
