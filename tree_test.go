@@ -159,3 +159,27 @@ func TestTree2Remove(t *testing.T) {
 		t.Fatal("should have nothing left")
 	}
 }
+
+func TestTree2ForEach(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+	var test *Tree[cmpUint, cmpUint]
+	for i := 0; i < cmpUintTestSize; i++ {
+		newVal := cmpUint(rand.Uint64())
+		test, _ = test.Insert(newVal, newVal)
+	}
+
+	keys := test.Keys()
+	var diy []cmpUint
+	test.ForEach(func(key, _ cmpUint) bool {
+		diy = append(diy, key)
+		return true
+	})
+	if len(diy) != len(keys) {
+		t.Fatalf("should be same length")
+	}
+	for i, key := range keys {
+		if diy[i] != key {
+			t.Fatalf("should be equal @%d %v %v", i, key, diy[i])
+		}
+	}
+}

@@ -239,6 +239,24 @@ func (t *Tree[K, V]) Remove(key K) (*Tree[K, V], bool) {
 	return t, false
 }
 
+// ForEach will call f for each node in this tree, in dfs order. If f returns false, interation stops.
+func (t *Tree[K, V]) ForEach(f func(K, V) bool) {
+	if t == nil {
+		return
+	}
+	t.forEach(f)
+}
+
+func (t *Tree[K, V]) forEach(f func(K, V) bool) bool {
+	if t.left != nil && !t.left.forEach(f) {
+		return false
+	}
+	if !f(t.key, t.value) {
+		return false
+	}
+	return t.right == nil || t.right.forEach(f)
+}
+
 // balance checks if, after Insert or Remove, the tree has become unbalanced.
 // If it has, balance rotates (or double rotates) to fix it, updating childSize as needed.
 // rightHeavy should be true if a new node was inserted into right (or removed from left), else false.
