@@ -42,7 +42,7 @@ func main() {
 	example, _ = example.Insert(big.NewInt(3), "three")
 
 	// remove
-	fmt.Println(example.Keys()) // 5, 4, 3
+	fmt.Println(example.Keys()) // 3, 4, 5
 	fmt.Println(example.Values()) // []string{"three", "four", "five"}
 	example, removed = example.Remove(big.NewInt(4))
 	fmt.Println(removed) // true
