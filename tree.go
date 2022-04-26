@@ -119,10 +119,6 @@ func top[K Cmpable[K], V any, R any](t *Tree[K, V], n int, reversed bool, f func
 	}
 	result := make([]R, 0, max)
 	t.forEachNode(func(node *Tree[K, V]) bool {
-		prev, next := node.left, node.right
-		if reversed {
-			prev, next = next, prev
-		}
 		result = append(result, f(node))
 		return len(result) < n
 	}, reversed)
