@@ -53,54 +53,80 @@ func (t *Tree[K, V]) Size() uint64 {
 	return t.childSize + 1
 }
 
-// Keys returns a slice of all keys in dfs order
+// Keys returns a slice of all keys in dfs order (ascending keys)
 func (t *Tree[K, V]) Keys() []K {
-	var keys []K
-	if t.left != nil {
-		keys = t.left.Keys()
-	}
-	keys = append(keys, t.key)
-	if t.right != nil {
-		rKeys := t.right.Keys()
-		keys = append(keys, rKeys...)
-	}
-	return keys
+	return t.LeastKeys(int(t.Size()))
 }
 
-// Values returns a slice of all values in dfs order
+// Values returns a slice of all values in dfs order (ascending keys)
 func (t *Tree[K, V]) Values() []V {
-	var vals []V
-	if t.left != nil {
-		vals = t.left.Values()
-	}
-	vals = append(vals, t.value)
-	if t.right != nil {
-		rKeys := t.right.Values()
-		vals = append(vals, rKeys...)
-	}
-	return vals
+	return t.LeastValues(int(t.Size()))
+}
+
+// Least returns a slice with length <= n holding the nodes this tree, in dfs order (ascending keys)
+func (t *Tree[K, V]) Least(n int) []*Tree[K, V] {
+	return top[K, V, *Tree[K, V]](t, n, false, identity[*Tree[K, V]])
+}
+
+// LeastKeys returns a slice with length <= n holding the keys this tree, in dfs order (ascending keys)
+func (t *Tree[K, V]) LeastKeys(n int) []K {
+	return top[K, V, K](t, n, false, getKeyFunc[K, V])
+}
+
+// LeastValues returns a slice with length <= n holding the values this tree, in dfs order (ascending keys)
+func (t *Tree[K, V]) LeastValues(n int) []V {
+	return top[K, V, V](t, n, false, getValFunc[K, V])
+}
+
+// Greatest returns a slice with length <= n holding the nodes this tree, in reverse dfs order (descending keys)
+func (t *Tree[K, V]) Greatest(n int) []*Tree[K, V] {
+	return top[K, V, *Tree[K, V]](t, n, true, identity[*Tree[K, V]])
+}
+
+// GreatestKeys returns a slice with length <= n holding the keys this tree, in reverse dfs order (descending keys)
+func (t *Tree[K, V]) GreatestKeys(n int) []K {
+	return top[K, V, K](t, n, true, getKeyFunc[K, V])
+}
+
+// GreatestValues returns a slice with length <= n holding the values this tree, in reverse dfs order (descending keys)
+func (t *Tree[K, V]) GreatestValues(n int) []V {
+	return top[K, V, V](t, n, true, getValFunc[K, V])
 }
 
 // GreatestNode returns the rightmost Tree node
 func (t *Tree[K, V]) GreatestNode() *Tree[K, V] {
-	if t == nil {
-		return nil
+	if top := t.Greatest(1); len(top) > 0 {
+		return top[0]
 	}
-	if t.right == nil {
-		return t
-	}
-	return t.right.GreatestNode()
+	return nil
 }
 
 // LeastNode returns the leftmost Tree node
 func (t *Tree[K, V]) LeastNode() *Tree[K, V] {
+	if bottom := t.Least(1); len(bottom) > 0 {
+		return bottom[0]
+	}
+	return nil
+}
+
+func top[K Cmpable[K], V any, R any](t *Tree[K, V], n int, reversed bool, f func(*Tree[K, V]) R) []R {
 	if t == nil {
 		return nil
 	}
-	if t.left == nil {
-		return t
+	max := n
+	if ts := t.Size(); ts < uint64(n) {
+		max = int(ts)
 	}
-	return t.left.LeastNode()
+	result := make([]R, 0, max)
+	t.forEachNode(func(node *Tree[K, V]) bool {
+		prev, next := node.left, node.right
+		if reversed {
+			prev, next = next, prev
+		}
+		result = append(result, f(node))
+		return len(result) < n
+	}, reversed)
+	return result
 }
 
 // Get returns the value in this tree associated with key, or the zero value of V if key is not present
@@ -244,17 +270,36 @@ func (t *Tree[K, V]) ForEach(f func(K, V) bool) {
 	if t == nil {
 		return
 	}
-	t.forEach(f)
+	t.forEach(f, false)
 }
 
-func (t *Tree[K, V]) forEach(f func(K, V) bool) bool {
-	if t.left != nil && !t.left.forEach(f) {
+// ReverseForEach will call f for each node in this tree, in reverse dfs order. If f returns false, interation stops.
+func (t *Tree[K, V]) ReverseForEach(f func(K, V) bool) {
+	if t == nil {
+		return
+	}
+	t.forEach(f, true)
+}
+
+func (t *Tree[K, V]) forEach(f func(K, V) bool, reversed bool) {
+	t.forEachNode(func(node *Tree[K, V]) bool {
+		return f(node.RootKey(), node.RootValue())
+	}, reversed)
+}
+
+func (t *Tree[K, V]) forEachNode(f func(*Tree[K, V]) bool, reversed bool) bool {
+	prev := t.left
+	next := t.right
+	if reversed {
+		prev, next = next, prev
+	}
+	if prev != nil && !prev.forEachNode(f, reversed) {
 		return false
 	}
-	if !f(t.key, t.value) {
+	if !f(t) {
 		return false
 	}
-	return t.right == nil || t.right.forEach(f)
+	return next == nil || next.forEachNode(f, reversed)
 }
 
 // balance checks if, after Insert or Remove, the tree has become unbalanced.
@@ -316,3 +361,7 @@ func (t *Tree[K, V]) balance(rightHeavy bool) *Tree[K, V] {
 	b.childSize = t.Size() + c.Size()
 	return b
 }
+
+func identity[T any](x T) T                           { return x }
+func getKeyFunc[K Cmpable[K], V any](t *Tree[K, V]) K { return t.RootKey() }
+func getValFunc[K Cmpable[K], V any](t *Tree[K, V]) V { return t.RootValue() }
